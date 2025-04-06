@@ -4,12 +4,7 @@
 #include <IRsend.h>
 #include <ir_Daikin.h>
 #include <ArduinoJson.h>
-
-const char *ssid = "YOUR_WIFI_SSID";
-const char *password = "YOUR_WIFI_PASSWORD";
-const char *mqtt_server = "YOUR_MQTT_SERVER";
-const char *mqtt_name = "YOUR_MQTT_SERVER_NAME";
-const char *mqtt_password = "YOUR_MQTT_SERVER_PASSWORD";
+#include "config.h" // Include configuration file
 
 // MQTT Topics
 const char *mqtt_topic_set = "daikinboxy/hvac/set";
