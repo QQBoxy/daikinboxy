@@ -11,14 +11,14 @@ const char *mqtt_server = "YOUR_MQTT_SERVER";
 const char *mqtt_name = "YOUR_MQTT_SERVER_NAME";
 const char *mqtt_password = "YOUR_MQTT_SERVER_PASSWORD";
 
-// MQTT 主題
+// MQTT Topics
 const char *mqtt_topic_set = "daikinboxy/hvac/set";
 const char *mqtt_topic_state = "daikinboxy/hvac/state";
 
-// 空調狀態變數
+// Air Conditioner State Variables
 bool power = false;
 String mode = "off";      // off, cool, heat, fan_only, auto
-int temperature = 25;     // 溫度設定 (18-30)
+int temperature = 25;     // Temperature setting (18-30)
 String fan_mode = "auto"; // low, medium, high, auto
 bool swing_mode = false;  // true=on, false=off
 
@@ -31,7 +31,7 @@ char msg_buffer[MSG_BUFFER_SIZE];
 const uint16_t kIrLed = 4; // ESP8266 GPIO pin to use. Recommended: 4 (D2).
 IRDaikinESP ac(kIrLed);    // Set the GPIO to be used to sending the message
 
-// 將空調狀態轉換為 JSON 並發布到 MQTT
+// Convert AC state to JSON and publish to MQTT
 void publishState() {
   StaticJsonDocument<200> doc;
   
@@ -43,16 +43,16 @@ void publishState() {
   serializeJson(doc, msg_buffer);
   client.publish(mqtt_topic_state, msg_buffer, true);
   
-  Serial.print("發布狀態: ");
+  Serial.print("Publishing state: ");
   Serial.println(msg_buffer);
 }
 
-// 根據當前狀態設置空調並發送 IR 訊號
+// Set AC according to current state and send IR signal
 void updateAC() {
-  // 設置電源
+  // Set power
   ac.setPower(power);
   
-  // 設置模式
+  // Set mode
   if (mode == "cool") {
     ac.setMode(kDaikinCool);
   } else if (mode == "heat") {
@@ -62,14 +62,14 @@ void updateAC() {
   } else if (mode == "auto") {
     ac.setMode(kDaikinAuto);
   } else {
-    // 如果模式是 "off"，確保電源關閉
+    // If mode is "off", ensure power is off
     ac.setPower(false);
   }
   
-  // 設置溫度
+  // Set temperature
   ac.setTemp(temperature);
   
-  // 設置風扇速度
+  // Set fan speed
   if (fan_mode == "low") {
     ac.setFan(kDaikinFanMin);
   } else if (fan_mode == "medium") {
@@ -80,28 +80,28 @@ void updateAC() {
     ac.setFan(kDaikinFanAuto);
   }
   
-  // 設置擺動
+  // Set swing
   ac.setSwingVertical(swing_mode);
   ac.setSwingHorizontal(swing_mode);
   
-  // 發送 IR 訊號
+  // Send IR signal
   ac.send();
   
-  Serial.println("發送 IR 訊號到 Daikin 空調");
-  Serial.print("電源: "); Serial.println(power ? "開啟" : "關閉");
-  Serial.print("模式: "); Serial.println(mode);
-  Serial.print("溫度: "); Serial.println(temperature);
-  Serial.print("風扇: "); Serial.println(fan_mode);
-  Serial.print("擺動: "); Serial.println(swing_mode ? "開啟" : "關閉");
+  Serial.println("Sending IR signal to Daikin AC");
+  Serial.print("Power: "); Serial.println(power ? "ON" : "OFF");
+  Serial.print("Mode: "); Serial.println(mode);
+  Serial.print("Temperature: "); Serial.println(temperature);
+  Serial.print("Fan: "); Serial.println(fan_mode);
+  Serial.print("Swing: "); Serial.println(swing_mode ? "ON" : "OFF");
   
-  // 更新 MQTT 狀態
+  // Update MQTT state
   publishState();
 }
 
 void setup_wifi() {
   delay(10);
   Serial.println();
-  Serial.print("連接到 WiFi: ");
+  Serial.print("Connecting to WiFi: ");
   Serial.println(ssid);
 
   WiFi.mode(WIFI_STA);
@@ -115,17 +115,17 @@ void setup_wifi() {
   randomSeed(micros());
 
   Serial.println("");
-  Serial.println("WiFi 已連接");
-  Serial.print("IP 地址: ");
+  Serial.println("WiFi connected");
+  Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 }
 
 void callback(char *topic, byte *payload, unsigned int length) {
-  Serial.print("收到訊息 [");
+  Serial.print("Message received [");
   Serial.print(topic);
   Serial.print("] ");
   
-  // 將 payload 轉換為字串以便輸出到序列埠
+  // Convert payload to string for serial output
   char message[length + 1];
   for (unsigned int i = 0; i < length; i++) {
     message[i] = (char)payload[i];
@@ -134,29 +134,29 @@ void callback(char *topic, byte *payload, unsigned int length) {
   message[length] = '\0';
   Serial.println();
   
-  // 檢查是否是設置主題
+  // Check if it's the set topic
   if (strcmp(topic, mqtt_topic_set) == 0) {
-    // 解析 JSON 訊息
+    // Parse JSON message
     StaticJsonDocument<200> doc;
     DeserializationError error = deserializeJson(doc, message);
     
     if (error) {
-      Serial.print("JSON 解析失敗: ");
+      Serial.print("JSON parsing failed: ");
       Serial.println(error.c_str());
       return;
     }
     
-    // 提取並更新狀態
+    // Extract and update state
     bool stateChanged = false;
     
-    // 處理模式
+    // Handle mode
     if (doc.containsKey("mode")) {
       String newMode = doc["mode"].as<String>();
       if (newMode != mode) {
         mode = newMode;
         stateChanged = true;
         
-        // 如果模式不是 "off"，則打開電源
+        // If mode is not "off", turn power on
         if (mode != "off") {
           power = true;
         } else {
@@ -165,7 +165,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
       }
     }
     
-    // 處理溫度
+    // Handle temperature
     if (doc.containsKey("temperature")) {
       int newTemp = doc["temperature"].as<int>();
       if (newTemp >= 18 && newTemp <= 30 && newTemp != temperature) {
@@ -174,7 +174,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
       }
     }
     
-    // 處理風扇模式
+    // Handle fan mode
     if (doc.containsKey("fan_mode")) {
       String newFanMode = doc["fan_mode"].as<String>();
       if (newFanMode != fan_mode) {
@@ -183,7 +183,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
       }
     }
     
-    // 處理擺動模式
+    // Handle swing mode
     if (doc.containsKey("swing_mode")) {
       String newSwingMode = doc["swing_mode"].as<String>();
       bool newSwing = (newSwingMode == "on");
@@ -193,7 +193,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
       }
     }
     
-    // 如果狀態有變化，更新空調
+    // If state changed, update AC
     if (stateChanged) {
       updateAC();
     }
@@ -202,21 +202,21 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
 void reconnect() {
   while (!client.connected()) {
-    Serial.print("嘗試 MQTT 連接...");
+    Serial.print("Attempting MQTT connection...");
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     if (client.connect(clientId.c_str(), mqtt_name, mqtt_password)) {
-      Serial.println("已連接");
+      Serial.println("connected");
       
-      // 訂閱設置主題
+      // Subscribe to set topic
       client.subscribe(mqtt_topic_set);
       
-      // 發布初始狀態
+      // Publish initial state
       publishState();
     } else {
-      Serial.print("連接失敗，錯誤碼=");
+      Serial.print("failed, rc=");
       Serial.print(client.state());
-      Serial.println("，5 秒後重試");
+      Serial.println(" try again in 5 seconds");
       delay(5000);
     }
   }
@@ -226,10 +226,10 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
   
-  // 初始化 IR 發射器
+  // Initialize IR sender
   ac.begin();
   
-  // 設置初始空調狀態
+  // Set initial AC state
   ac.setPower(false);
   ac.setMode(kDaikinCool);
   ac.setTemp(25);
@@ -249,7 +249,7 @@ void loop() {
   }
   client.loop();
 
-  // 每 30 秒發布一次狀態
+  // Publish state every 30 seconds
   unsigned long now = millis();
   if (now - lastMsg > 30000) {
     lastMsg = now;
